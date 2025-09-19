@@ -1,0 +1,71 @@
+pipeline {
+    // Utilise un agent Jenkins disponible pour exécuter le pipeline
+    agent any
+
+    // Définition des variables d'environnement utilisées dans tout le pipeline
+    environment {
+        // ID du credential GitHub créé dans Jenkins
+        GIT_CREDENTIALS_ID = 'gitUltime'
+
+        // URL du dépôt Git à cloner
+        REPO_URL = 'https://github.com/Rokhaya-toure/clone_watsApp_back.git'
+
+        // Nom et tag de l'image Docker qui sera construite
+        DOCKER_IMAGE = 'rokhayatoure/watsaap_back:latest'
+
+        // ID du credential Docker Hub pour pousser l'image
+        DOCKER_CREDENTIALS_ID = 'Docker_id'
+    }
+
+    // Définition des différentes étapes (stages) du pipeline
+    stages {
+
+        // Stage 1 : Cloner le dépôt Git
+        stage('Checkout') {
+            steps {
+                git(
+                    url: "${REPO_URL}",                  // URL du repo
+                    credentialsId: "${GIT_CREDENTIALS_ID}", // Credential Git pour l'accès privé
+                    branch: 'main'                       // Branche à cloner
+                )
+            }
+        }
+
+        // Stage 2 : Compiler le projet Spring Boot avec Maven
+        stage('Build') {
+            steps {
+                sh './mvnw clean package -DskipTests' // Clean + package, tests ignorés pour aller plus vite
+            }
+        }
+
+        // Stage 3 : Construire l'image Docker
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("${DOCKER_IMAGE}") // Build de l'image Docker à partir du Dockerfile
+                }
+            }
+        }
+
+        // Stage 4 : Pousser l'image Docker sur Docker Hub
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('', "${DOCKER_CREDENTIALS_ID}") { // Connexion au Docker Hub
+                        docker.image("${DOCKER_IMAGE}").push()           // Push de l'image construite
+                    }
+                }
+            }
+        }
+    }
+
+    // Actions à exécuter après le pipeline
+    post {
+        success {
+            echo 'Pipeline terminé avec succès !' // Message si tout s'est bien passé
+        }
+        failure {
+            echo 'Le pipeline a échoué.'         // Message si une étape échoue
+        }
+    }
+}
