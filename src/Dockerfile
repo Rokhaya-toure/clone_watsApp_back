@@ -1,36 +1,16 @@
-# Étape 1 : build
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM amazoncorretto:17-alpine
 
-# Crée le répertoire de travail
+ARG JAR_FILE=target/paymybuddy.jar
+
 WORKDIR /app
 
-# Copie les fichiers Maven et le wrapper
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
+COPY ${JAR_FILE} paymybuddy.jar
 
-# Donne les droits d'exécution au wrapper Maven (important pour Alpine)
-RUN chmod +x mvnw
+ENV SPRING_DATASOURCE_USERNAME=root
 
-# Télécharge les dépendances Maven (cache pour accélérer les builds)
-RUN ./mvnw dependency:go-offline
+ENV SPRING_DATASOURCE_PASSWORD=password
 
-# Copie le code source
-COPY src ./src
+ENV SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy
 
-# Compile et package le projet
-RUN ./mvnw clean package -DskipTests
 
-# Étape 2 : image finale
-FROM eclipse-temurin:21-jre-alpine
-
-# Répertoire de travail
-WORKDIR /app
-
-# Copier le JAR depuis l'étape de build
-COPY --from=build /app/target/*.jar app.jar
-
-# Expose le port de l'application
-EXPOSE 8080
-
-# Commande pour démarrer l'application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar" , "paymybuddy.jar"]
